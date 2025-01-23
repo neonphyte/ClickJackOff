@@ -1,0 +1,24 @@
+{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.0",
+    "bcrypt": "^5.1.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17"
+  },
+  "name": "clickshield-main",
+  "version": "1.0.0",
+  "description": "Steps to use to use the browser extension 1. Pull the code duh!!! 2. Go to the Extensions page by entering chrome://extensions in a new tab.     1. Alternatively, click the Extensions menu puzzle button and select Manage Extensions at the bottom of the menu.     2. Or, click the Chrome menu, hover over More Tools, then select Extensions. 3. Enable Developer Mode by clicking the toggle switch next to Developer mode. 4. Click the Load unpacked button and select the extension directory.",
+  "main": "background.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
