@@ -9,16 +9,16 @@ document.addEventListener("DOMContentLoaded", () => {
    */
   function scanPageUrls() {
     const links = Array.from(document.querySelectorAll("a"));
-    return links.map((link) => {
-      // Use data-original-href if available, otherwise use href
-      return link.dataset.originalHref || link.href;
-    }).filter((href) => href && href !== "javascript:void(0)"); // Filter out invalid links
+    return links
+      .map((link) => {
+        // Use data-original-href if available, otherwise use href
+        return link.dataset.originalHref || link.href;
+      })
+      .filter((href) => href && href !== "javascript:void(0)"); // Filter out invalid links
   }
 
   /**
    * Fetch predictions for a given URL from the Flask backend API.
-   * @param {string} url - The URL to check.
-   * @returns {Promise<Object|null>} - The prediction result or null if an error occurred.
    */
   async function fetchPrediction(url) {
     try {
@@ -41,7 +41,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /**
    * Updates the UI with scanned links and their predictions.
-   * @param {Array<string>} urls - The list of URLs to display.
    */
   async function updateUI(urls) {
     linkCountElement.textContent = urls.length;
@@ -82,12 +81,10 @@ document.addEventListener("DOMContentLoaded", () => {
         resultSpan.style.color = "gray";
       }
     }
-
-    disableLinks(); // Reapply click protection after updating the UI
   }
 
   /**
-   * Prevents double-clickjacking by disabling links when not hovered and enabling them on hover.
+   * Disables links on the page by replacing `href` with `javascript:void(0)`.
    */
   function disableLinks() {
     const links = document.querySelectorAll("a");
@@ -104,7 +101,6 @@ document.addEventListener("DOMContentLoaded", () => {
       // Disable the link by setting href to "javascript:void(0)"
       link.href = "javascript:void(0)";
       link.classList.add("disabled"); // Add a class for styling
-      link.classList.add("processed"); // Mark the link as processed
 
       // Enable the link temporarily on hover
       link.addEventListener("mouseenter", function () {
@@ -119,12 +115,14 @@ document.addEventListener("DOMContentLoaded", () => {
         this.classList.add("disabled");
         this.href = "javascript:void(0)";
       });
+
+      // Mark as processed
+      link.classList.add("processed");
     });
   }
 
   /**
    * Gets the current active tab.
-   * @returns {Promise<chrome.tabs.Tab>} - The active tab object.
    */
   async function getCurrentTab() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -149,28 +147,17 @@ document.addEventListener("DOMContentLoaded", () => {
           console.error("Error scanning page:", chrome.runtime.lastError.message);
           return;
         }
+        const urls = results[0].result;
+        updateUI(urls);
 
-        if (results && results[0] && results[0].result) {
-          const urls = results[0].result; // Extract the scanned URLs
-          console.log("Scanned URLs:", urls); // Debug log
-          updateUI(urls); // Update the UI with predictions
-        } else {
-          console.log("No links found on the page.");
-          updateUI([]);
-        }
+        // Make links non-clickable
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: disableLinks, // Execute the disableLinks function
+        });
       }
     );
   }
-
-  // Watch for DOM changes and reapply click protection
-  const observer = new MutationObserver(() => {
-    disableLinks();
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  // Scan and predict links every 10 seconds
-  setInterval(scanAndPredictLinks, 10000);
 
   // Run the initial scan and prediction when the popup is opened
   scanAndPredictLinks();
