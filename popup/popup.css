@@ -94,3 +94,16 @@ body {
 .url-link:hover {
   text-decoration: underline;
 }
+
+
+.url-item span {
+  font-weight: bold;
+}
+
+.url-item span.safe {
+  color: green;
+}
+
+.url-item span.malicious {
+  color: red;
+}

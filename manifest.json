@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ClickShield",
+  "name": "ClickJackOff",
   "version": "1.0",
   "description": "A browser extension to detect and protect against clickjacking using dynamic iframe analysis.",
   "icons": {
