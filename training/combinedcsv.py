@@ -27,7 +27,7 @@ def combine_csv(file1, file2, output_file):
         writer.writerows(data2)
 
 # Example usage
-file1 = 'malicious_phish_cleaned2.csv'
+file1 = 'malicious_phish.csv'
 file2 = 'URL dataset.csv'
 output_file = 'combined_file.csv'
 

@@ -2,9 +2,12 @@ import pandas as pd
 import numpy as np
 import pickle
 import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import classification_report, accuracy_score
+from sklearn.ensemble import StackingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from imblearn.over_sampling import SMOTE
 from tqdm import tqdm
 import math
 
@@ -86,6 +89,17 @@ y = features_df['type']
 # Split data into train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
+# Handle class imbalance using SMOTE
+print("Applying SMOTE...")
+smote = SMOTE(random_state=42)
+X_train_balanced, y_train_balanced = smote.fit_resample(X_train, y_train)
+print("Balanced Class Distribution:", pd.Series(y_train_balanced).value_counts())
+
+# Feature scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train_balanced)
+X_test_scaled = scaler.transform(X_test)
+
 # Train the XGBoost model
 print("Training XGBoost model...")
 xgb_model = xgb.XGBClassifier(
@@ -103,6 +117,60 @@ xgb_model.fit(X_train, y_train)
 y_pred = xgb_model.predict(X_test)
 print("\nClassification Report:\n", classification_report(y_test, y_pred))
 print("Accuracy:", accuracy_score(y_test, y_pred))
+
+# Hyperparameter tuning with GridSearchCV
+print("Running GridSearchCV...")
+param_grid = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [4, 6, 8],
+    'learning_rate': [0.01, 0.1, 0.2],
+    'subsample': [0.8, 1],
+    'colsample_bytree': [0.8, 1]
+}
+grid_search = GridSearchCV(
+    estimator=xgb.XGBClassifier(use_label_encoder=False, eval_metric="logloss", random_state=42),
+    param_grid=param_grid,
+    scoring='accuracy',
+    cv=3,
+    verbose=1
+)
+grid_search.fit(X_train_scaled, y_train_balanced)
+
+# Best parameters
+print("Best Parameters:", grid_search.best_params_)
+
+# Evaluate the best model
+y_pred_tuned = grid_search.best_estimator_.predict(X_test_scaled)
+print("\nGridSearchCV Classification Report:\n", classification_report(y_test, y_pred_tuned))
+
+# Cross-validation
+print("Performing Cross-Validation...")
+cv_scores = cross_val_score(xgb_model, X, y, cv=5, scoring='accuracy')
+print("Cross-Validation Accuracy Scores:", cv_scores)
+print("Mean CV Accuracy:", cv_scores.mean())
+
+# Stacking ensemble model
+print("Training Stacking Model...")
+base_models = [
+    ('xgb', xgb.XGBClassifier(use_label_encoder=False, eval_metric="logloss")),
+    ('rf', RandomForestClassifier(n_estimators=100, random_state=42))
+]
+stacked_model = StackingClassifier(
+    estimators=base_models,
+    final_estimator=LogisticRegression(),
+    cv=5
+)
+stacked_model.fit(X_train_scaled, y_train_balanced)
+y_pred_stacked = stacked_model.predict(X_test_scaled)
+print("\nStacking Classification Report:\n", classification_report(y_test, y_pred_stacked))
+
+# Save the best model pipeline
+print("Saving the best model pipeline...")
+from sklearn.pipeline import Pipeline
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('model', grid_search.best_estimator_)
+])
 
 # Save the trained model to a pickle file
 with open("xgboost_model.pkl", "wb") as model_file:

@@ -30,6 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
       (results) => {
         const urls = results[0].result;
         updateUI(urls);
+
+        // Make links non-clickable initially
+        chrome.scripting.executeScript({
+          target: { tabId: tabs[0].id },
+          func: disableLinks, // Execute the disableLinks function
+        });
       }
     );
   });
@@ -63,3 +69,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// Function to disable all <a> tags and set them to non-clickable by default
+function disableLinks() {
+  const links = document.querySelectorAll('a');
+  links.forEach((link) => {
+    // Store the original href if it hasn't been stored already
+    if (!link.dataset.originalHref) {
+      link.dataset.originalHref = link.href;
+    }
+
+    // Disable the link by setting it to javascript:void(0)
+    link.href = 'javascript:void(0)';
+    link.classList.add('disabled'); // Optionally, add a class for styling
+
+    // Enable the link when the user hovers over the link
+    link.addEventListener('mouseenter', function () {
+      if (this.classList.contains('disabled')) {
+        this.classList.remove('disabled'); // Remove the disabled class on hover
+        this.href = this.dataset.originalHref; // Restore original href
+      }
+    });
+
+    // Re-disable the link when the user stops hovering
+    link.addEventListener('mouseleave', function () {
+      this.classList.add('disabled'); // Re-add the disabled class
+      this.href = 'javascript:void(0)'; // Disable the link
+    });
+  });
+}
+
+// Reapply disableLinks() when DOM changes occur
+const observer = new MutationObserver(() => {
+  disableLinks();
+});
+
+// Observe DOM changes to ensure dynamically added links are handled
+observer.observe(document.body, { childList: true, subtree: true });
