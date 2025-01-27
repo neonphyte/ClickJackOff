@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
    * This function runs in the context of the active tab.
    */
   function scanPageUrls() {
-    const links = Array.from(document.querySelectorAll("a"));
+    const links = Array.from(document.querySelectorAll("a, area, base, link"));
     return links
       .map((link) => {
         // Use data-original-href if available, otherwise use href
