@@ -159,6 +159,16 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+  // Watch for DOM changes and reapply click protection
+  const observer = new MutationObserver(() => {
+    disableLinks();
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  // Scan and predict links every 10 seconds
+  setInterval(scanAndPredictLinks, 10000);
+
   // Run the initial scan and prediction when the popup is opened
   scanAndPredictLinks();
 });
