@@ -43,7 +43,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Function to scan URLs on the page
   function scanPageUrls() {
     const links = Array.from(document.querySelectorAll('a'));
-    return links.map((link) => link.href);
+    // Map through each link and check its href
+    return links.map((link) => {
+      // If href is 'javascript:void(0)', use the value from data-original-href
+      if (link.href === 'javascript:void(0)') {
+        return link.dataset.originalHref; // Return the original href stored in data-original-href
+      }
+      // Otherwise, return the href as is
+      return link.href;
+    });
   }
 
   // Function to update the UI
