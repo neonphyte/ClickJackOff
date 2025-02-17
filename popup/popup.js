@@ -1,20 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
   const linkCountElement = document.getElementById("link-count");
   const urlListContainer = document.getElementById("url-list");
-  const API_URL = "http://52.175.16.74:5000/predict"; // Replace with your Flask API URL
+  const API_URL = "http://52.175.16.74:5000/predict"; // Flask API URL
 
   /**
    * Scans for all links on the current page.
-   * This function runs in the context of the active tab.
    */
   function scanPageUrls() {
-    const links = Array.from(document.querySelectorAll("a, area, base, link"));
-    return links
-      .map((link) => {
-        // Use data-original-href if available, otherwise use href
-        return link.dataset.originalHref || link.href;
-      })
-      .filter((href) => href && href !== "javascript:void(0)"); // Filter out invalid links
+    return Array.from(document.querySelectorAll("a, area, base, link"))
+      .map(link => link.dataset.originalHref || link.href)
+      .filter(href => href && href !== "javascript:void(0)");
   }
 
   /**
@@ -40,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Updates the UI with scanned links and their predictions.
+   * Updates the UI with scanned links and their latest predictions.
    */
   async function updateUI(urls) {
     linkCountElement.textContent = urls.length;
@@ -50,8 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Clear previous results
-    urlListContainer.innerHTML = "";
+    urlListContainer.innerHTML = ""; // Clear previous results
 
     for (const url of urls) {
       const urlItem = document.createElement("div");
@@ -74,8 +68,21 @@ document.addEventListener("DOMContentLoaded", () => {
       // Fetch prediction and update the result
       const prediction = await fetchPrediction(url);
       if (prediction) {
-        resultSpan.textContent = `${prediction.prediction}`;
-        resultSpan.style.color = prediction.prediction === "Malicious" ? "red" : "green";
+        let statusText;
+        let color;
+
+        if (prediction.virustotal && prediction.virustotal.risk) {
+          // Use VirusTotal result only
+          statusText = prediction.virustotal.risk;
+          color = prediction.virustotal.risk === "Malicious" ? "red" : "green";
+        } else {
+          // If VirusTotal was not checked, fallback to the first round result
+          statusText = prediction.prediction;
+          color = prediction.prediction === "Malicious" ? "red" : "green";
+        }
+
+        resultSpan.textContent = statusText;
+        resultSpan.style.color = color;
       } else {
         resultSpan.textContent = "Error fetching result.";
         resultSpan.style.color = "gray";
@@ -84,39 +91,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Disables links on the page by replacing `href` with `javascript:void(0)`.
+   * Disables links on the page to prevent malicious clicks.
    */
   function disableLinks() {
-    const links = document.querySelectorAll("a");
-
-    links.forEach((link) => {
-      // Skip already processed links
+    document.querySelectorAll("a").forEach(link => {
       if (link.classList.contains("processed")) return;
 
-      // Store the original href in data-original-href
       if (!link.dataset.originalHref) {
         link.dataset.originalHref = link.href;
       }
 
-      // Disable the link by setting href to "javascript:void(0)"
       link.href = "javascript:void(0)";
-      link.classList.add("disabled"); // Add a class for styling
+      link.classList.add("disabled");
 
-      // Enable the link temporarily on hover
       link.addEventListener("mouseenter", function () {
         if (this.classList.contains("disabled")) {
           this.classList.remove("disabled");
-          this.href = this.dataset.originalHref; // Restore the original href
+          this.href = this.dataset.originalHref;
         }
       });
 
-      // Re-disable the link when the user stops hovering
       link.addEventListener("mouseleave", function () {
         this.classList.add("disabled");
         this.href = "javascript:void(0)";
       });
 
-      // Mark as processed
       link.classList.add("processed");
     });
   }
@@ -130,40 +129,32 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Main function to scan links on the active tab and update the UI with predictions.
+   * Main function to scan links and update UI.
    */
   async function scanAndPredictLinks() {
-    // Get the active tab
     const tab = await getCurrentTab();
 
-    // Use Chrome's scripting API to scan links on the page
     chrome.scripting.executeScript(
-      {
-        target: { tabId: tab.id },
-        func: scanPageUrls, // This function will run in the tab's context
-      },
+      { target: { tabId: tab.id }, func: scanPageUrls },
       (results) => {
         if (chrome.runtime.lastError) {
           console.error("Error scanning page:", chrome.runtime.lastError.message);
           return;
         }
+
         const urls = results[0].result;
         updateUI(urls);
 
-        // Make links non-clickable
         chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: disableLinks, // Execute the disableLinks function
+          func: disableLinks,
         });
       }
     );
   }
 
   // Watch for DOM changes and reapply click protection
-  const observer = new MutationObserver(() => {
-    disableLinks();
-  });
-
+  const observer = new MutationObserver(() => disableLinks());
   observer.observe(document.body, { childList: true, subtree: true });
 
   // Scan and predict links every 10 seconds
