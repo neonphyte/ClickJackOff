@@ -2,6 +2,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const linkCountElement = document.getElementById("link-count");
   const urlListContainer = document.getElementById("url-list");
   const API_URL = "http://52.175.16.74:5000/predict"; // Flask API URL
+  let lastClickTime = 0;
+  let lastClickedElement = null;
 
   /**
    * Scans for all links on the current page.
@@ -33,6 +35,45 @@ document.addEventListener("DOMContentLoaded", () => {
       return null;
     }
   }
+
+  /**
+   * Click Guard: Prevents rapid clicks & clickjacking attempts
+   */
+  function clickGuard(event) {
+    const now = Date.now();
+    const clickedElement = event.target;
+
+    // Block clicks on hidden elements
+    const style = window.getComputedStyle(clickedElement);
+    if (
+      style.opacity === "0" ||
+      style.visibility === "hidden" ||
+      style.display === "none" ||
+      clickedElement.getBoundingClientRect().width === 0 ||
+      clickedElement.getBoundingClientRect().height === 0
+    ) {
+      console.warn("Blocked click on hidden element:", clickedElement);
+      event.preventDefault();
+      event.stopPropagation();
+      alert("⚠️ Clickjacking detected! Click blocked.");
+      return;
+    }
+
+    // Prevent rapid double-clicking on different elements
+    if (lastClickedElement && lastClickedElement !== clickedElement && now - lastClickTime < 500) {
+      console.warn("Double Clickjacking detected!");
+      event.preventDefault();
+      event.stopPropagation();
+      alert("⚠️ Suspicious rapid click detected! Click blocked.");
+      return;
+    }
+
+    lastClickTime = now;
+    lastClickedElement = clickedElement;
+  }
+
+  // Attach click guard to the document
+  document.addEventListener("click", clickGuard, true);
 
   /**
    * Updates the UI with scanned links and their latest predictions.
