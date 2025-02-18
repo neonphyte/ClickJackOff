@@ -21,3 +21,15 @@
 //       }
 //     });
 //   });
+
+chrome.webNavigation.onCommitted.addListener((details) => {
+    if (details.frameId === 0) {
+      console.log(`Injecting Click Guard into tab: ${details.tabId}`);
+  
+      chrome.scripting.executeScript({
+        target: { tabId: details.tabId },
+        files: ["content.js"]  // Inject click guard into popups
+      });
+    }
+  });
+  
