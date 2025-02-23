@@ -2,7 +2,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const linkCountElement = document.getElementById("link-count");
   const urlListContainer = document.getElementById("url-list");
   const API_URL = "http://52.175.16.74:5000/predict"; // Flask API URL
-
+  // const CHECK_DOWNLOAD_LINK_API_URL = "http://20.2.169.240:5210" // BASE URL for Flask API in 2nd VM
+  const API_URL_SECONDARY = "http://20.2.169.240:5210/checkDownloadable"; // Flask API to Secondary VM (RyanER VM)
+  
   /**
    * Scans for all links on the current page.
    */
@@ -34,8 +36,57 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+
+/** 
+   * Fetch Additional check for downloadable files/Links from Secondary VM
+  */
+async function checkDownloadable(url, resultSpan, downloadButton) {
+  try {
+    resultSpan.textContent = "Analyzing...";
+    resultSpan.style.color = "blue"; // Indicate loading state
+
+    const response = await fetch(API_URL_SECONDARY, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Download Check API Error: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log(`Downloadable Check Result for ${url}:`, result);
+
+    if (result.isDownloadable) {
+      let riskColor = result.riskLevel === "high_risk" ? "red" : result.riskLevel === "medium_risk" ? "orange" : "green";
+      resultSpan.textContent = `Download Risk: ${result.riskLevel.toUpperCase()} (${result.fileType})`;
+      resultSpan.style.color = riskColor;
+
+      if (result.vtResult) {
+        resultSpan.textContent += ` | VT Results: ${result.vtResult.malicious}`;
+        if (result.vtResult.malicious > 0) {
+          resultSpan.style.color = "red";
+        }
+      }
+    } else {
+      resultSpan.textContent = "No Download Indicators Detected";
+      resultSpan.style.color = "gray";
+    }
+
+    // Hide the button after check
+    downloadButton.style.display = "none";
+  } catch (error) {
+    console.error(`Error checking downloadable link for ${url}:`, error);
+    resultSpan.textContent = "Error analyzing download.";
+    resultSpan.style.color = "gray";
+  }
+}
+
+
+
   /**
-   * Updates the UI with scanned links and their latest predictions.
+   * Updates the UI with scanned links and their latest predictions
    */
   async function updateUI(urls) {
     linkCountElement.textContent = urls.length;
@@ -83,6 +134,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
         resultSpan.textContent = statusText;
         resultSpan.style.color = color;
+
+        // If URL is malicious, add a "Check Download Link" button
+        if (statusText === "Malicious" || statusText === "Safe") {
+          const downloadButton = document.createElement("button");
+          downloadButton.textContent = "Check Download Link";
+          downloadButton.style.marginLeft = "10px";
+          downloadButton.style.backgroundColor = "#ff4d4d";
+          downloadButton.style.color = "white";
+          downloadButton.style.border = "none";
+          downloadButton.style.padding = "5px 10px";
+          downloadButton.style.cursor = "pointer";
+          downloadButton.style.borderRadius = "5px";
+
+          downloadButton.addEventListener("click", () => {
+            checkDownloadable(url, resultSpan, downloadButton);
+          });
+
+          urlItem.appendChild(downloadButton);
+        }
       } else {
         resultSpan.textContent = "Error fetching result.";
         resultSpan.style.color = "gray";
