@@ -119,17 +119,13 @@ async function checkDownloadable(url, resultSpan, downloadButton) {
       // Fetch prediction and update the result
       const prediction = await fetchPrediction(url);
       if (prediction) {
-        let statusText;
-        let color;
+        let statusText = prediction.prediction;
+        let color = statusText === "Malicious" ? "red" : "green";
 
-        if (prediction.virustotal && prediction.virustotal.risk) {
-          // Use VirusTotal result only
-          statusText = prediction.virustotal.risk;
-          color = prediction.virustotal.risk === "Malicious" ? "red" : "green";
-        } else {
-          // If VirusTotal was not checked, fallback to the first round result
-          statusText = prediction.prediction;
-          color = prediction.prediction === "Malicious" ? "red" : "green";
+         // Use VirusTotal result if available
+        if (prediction.virustotal && (prediction.virustotal === "Safe" || prediction.virustotal === "Malicious")) {
+          statusText = prediction.virustotal; // override with VT result
+          color = statusText === "Malicious" ? "red" : "green";
         }
 
         resultSpan.textContent = statusText;
@@ -227,8 +223,8 @@ async function checkDownloadable(url, resultSpan, downloadButton) {
   const observer = new MutationObserver(() => disableLinks());
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // Scan and predict links every 10 seconds
-  setInterval(scanAndPredictLinks, 10000);
+  // Scan and predict links every 60 seconds
+  setInterval(scanAndPredictLinks, 60000);
 
   // Run the initial scan and prediction when the popup is opened
   scanAndPredictLinks();
