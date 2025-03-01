@@ -5,7 +5,7 @@ body {
   margin: 0;
   padding: 20px;
   width: 500px;
-  height: 800px;
+  height: 600px;
 }
 
 .container {
@@ -106,4 +106,82 @@ body {
 
 .url-item span.malicious {
   color: red;
+}
+
+.logo {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto;
+  display: block;
+}
+
+
+
+/* Spinning Loader */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #3498db;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+/* Keyframes for spinning animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Checkmark for Safe URLs */
+.checkmark {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: solid green;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+  padding: 3px;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+/* Warning icon for Malicious URLs */
+.warning {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: solid red;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+  padding: 3px;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+
+/* Add these to your popup.css */
+.url-item {
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background-color: #f8f9fa;
+}
+
+.url-link {
+  word-break: break-all;
+  display: block;
+  margin-bottom: 5px;
+}
+
+/* Style the buttons created in JS */
+button {
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border: none;
+  margin-top: 5px;
 }
