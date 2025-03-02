@@ -308,7 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
     container.appendChild(tickButton);
     container.appendChild(crossButton);
 
-    // If the link is downloadable, add a Sandbox button
+    // If the link is downloadable, add a Sandbox buttonn
     if (downloadable) {
       const sandboxButton = document.createElement("button");
       sandboxButton.type = "button";
