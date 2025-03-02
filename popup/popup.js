@@ -205,12 +205,19 @@ document.addEventListener("DOMContentLoaded", () => {
       analysisPill.style.fontWeight = "bold";
   
       // If the file is considered high risk or malicious
-      if (result.riskLevel && result.riskLevel.toLowerCase() === "high_risk") {
-        analysisPill.textContent = "Downloadable analyzed as malicious!";
+      if (result.vtResult.malicious > 0 && (result.fsResult && result.fsResult.status === "completed" && result.fsResult.verdict === "malicious")) {
+        // analysisPill.textContent = "Downloadable analyzed as malicious!";
+        analysisPill.textContent = "malicious";
         analysisPill.style.backgroundColor = "#dc3545"; // red
         analysisPill.style.color = "#fff";
+      } else if (result.vtResult.malicious > 0 || (result.fsResult && result.fsResult.status === "completed" && result.fsResult.verdict === "malicious")){
+        // analysisPill.textContent = "Downloadable analyzed as might be malicious";
+        analysisPill.textContent = result.fsResult.threat_score;
+        analysisPill.style.backgroundColor = "#ffa500"; // orange
+        analysisPill.style.color = "#fff";
       } else {
-        analysisPill.textContent = "Downloadable analyzed as safe!";
+        // analysisPill.textContent = "Downloadable analyzed as safe!";
+        analysisPill.textContent = "clean";
         analysisPill.style.backgroundColor = "#28a745"; // green
         analysisPill.style.color = "#fff";
       }
@@ -489,7 +496,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --------------------------------------------------------------------------
   // 16. Periodically re-scan (e.g., every 60 seconds)
-  setInterval(scanAndPredictLinks, 60000);
+  setInterval(scanAndPredictLinks, 600000);
 
   // --------------------------------------------------------------------------
   // Initial scan on load
