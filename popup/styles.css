@@ -1,0 +1,147 @@
+/* style.css */
+
+/* You can override Bootstrap colors or add custom styles here */
+
+/* Example: Adjust the body’s background if you want a custom shade 
+   (or leave it as .bg-dark from Bootstrap):
+body.bg-dark {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+}
+*/
+
+/* Set the custom font for the entire page */
+body {
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding: 20px;
+    width: 400px;
+    height: 600px;
+    overflow: auto;
+    font-size: 12px;
+  }
+
+/* Logo image styling */
+.logo-img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+  }
+  
+  /* URL display container */
+  .url-display {
+    background-color: #212529; /* Slightly lighter dark color for contrast */
+    /* Add padding, borders, or anything else you like here */
+  }
+  
+  .extension-popup {
+    width: 500px; /* or any desired width */
+    /* If you need a fixed height, you can also do: height: 600px; */
+  }
+  
+  /* Custom caption text color */
+  .url-display a {
+    color: #24B3A8;
+    text-decoration: none; /* Optional: removes underline */
+  }
+
+
+
+  /*Selected Tabs*/
+  .nav-tabs {
+    border-bottom: 1px solid #444;
+  }
+  
+  .nav-tabs .nav-link {
+    color: #24B3A8; 
+    border: none; 
+  }
+  
+  .nav-tabs .nav-link:hover {
+    color: #1D8D84; 
+  }
+  
+  .nav-tabs .nav-link.active {
+    background-color: #24B3A8;
+    color: #fff;
+    border: none;
+    border-bottom: 3px solid #24B3A8;
+  }
+  
+
+  
+/* Additional elements that might need explicit overrides */
+.nav-link,
+.nav-link.active,
+.btn,
+p,
+h1, h2, h3, h4, h5, h6 {
+  font-family: inherit;
+}
+
+
+/* Limit the popup width so it doesn’t stretch too wide */
+.popup-container {
+  width: 360px; /* Adjust as needed (300–400px is typical for Chrome popups) */
+  max-width: 100%;
+  background-color: #1f1f1f; /* Slightly different from body if you like */
+  border-radius: 8px; /* optional for rounded corners */
+  padding: 1rem; /* internal padding */
+}
+
+/* Caption text styling */
+.caption-text {
+  font-size: 0.8rem;
+  color: #bbb; /* a lighter gray for subtext */
+  margin: 0;
+}
+
+/* Make each card more compact */
+.card {
+  margin-bottom: 0.5rem; /* less space between cards */
+}
+
+/* CHANGED: reduce default card body padding */
+.card-body {
+  padding: 0.5rem; /* was 1rem by default */
+}
+
+/* 
+  NEW: Classes for Safe and Malicious backgrounds
+  so we don't rely on inline styles for color 
+*/
+.badge.bg-safe {
+  background-color: #28a745 !important;
+}
+
+.badge.bg-malicious {
+  background-color: #dc3545 !important;
+}
+
+/* 
+  CHANGED: .link-url to handle very long URLs 
+  and keep them on a single line with ellipsis 
+*/
+.link-url {
+  color: white;
+  font-size: 0.7rem;
+  text-decoration: none;
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 200px;       /* limit the width to 200px */
+  white-space: nowrap;    /* no line wrap */
+  overflow: hidden;       /* hide overflowed text */
+  text-overflow: ellipsis;/* add '...' if truncated */
+}
+
+/* 
+  Badge alignment with the URL, 
+  so "Safe" or "Malicious" is on the same line 
+*/
+.badge-inline {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 8px; /* space between URL and badge */
+  font-size: 0.75rem;
+  color: #fff;
+}
