@@ -38,13 +38,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 /** 
-   * Fetch Additional check for downloadable files/Links from Secondary VM
+   * Magnifying glass button function for checking if URL is a downloadable link, when button clicked
+   * Fetch analysis results of downloadable Links from RyanER VM
   */
 async function checkDownloadable(url, resultSpan, downloadButton) {
   try {
+    // Update the result span to indicate loading state when button is clicked
     resultSpan.textContent = "Analyzing...";
     resultSpan.style.color = "blue"; // Indicate loading state
 
+    console.log("Sending request to check downloadable:", url);  // Debug log
+
+    // Send request containing URL, to Secondary VM API to check if URL is downloadable
     const response = await fetch(API_URL_SECONDARY, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -59,16 +64,34 @@ async function checkDownloadable(url, resultSpan, downloadButton) {
     console.log(`Downloadable Check Result for ${url}:`, result);
 
     if (result.isDownloadable) {
-      let riskColor = result.riskLevel === "high_risk" ? "red" : result.riskLevel === "medium_risk" ? "orange" : "green";
-      resultSpan.textContent = `Download Risk: ${result.riskLevel.toUpperCase()} (${result.fileType})`;
-      resultSpan.style.color = riskColor;
+      let riskColor = result.riskLevel === "high_risk" ? "red" : 
+                    result.riskLevel === "medium_risk" ? "orange" : "green";
+      
+      // Create risk message for storing all analysis results of URL (i.e. Risk level, Falcon Sandbox Results[Score, verdict], VirusTotal Results)
+      let riskMessage = `Download Risk: ${result.riskLevel.toUpperCase()} (${result.fileType})`;
 
-      if (result.vtResult) {
-        resultSpan.textContent += ` | VT Results: ${result.vtResult.malicious}`;
-        if (result.vtResult.malicious > 0) {
-          resultSpan.style.color = "red";
+      // Append Falcon Sandbox results to risk message
+      if (result.fsResult && result.fsResult.status === "completed") {
+        riskMessage += ` | Falcon Score: ${result.fsResult.threat_score}`;
+        riskMessage += `, Verdict: ${result.fsResult.verdict}`;
+        
+        if (result.fsResult.threat_score > 7 || result.fsResult.verdict === "malicious") {
+          riskColor = "red";
         }
       }
+
+       // Append VirusTotal results to risk message
+       if (result.vtResult) {
+        riskMessage += ` | VT Results: ${result.vtResult.malicious}`;
+        if (result.vtResult.malicious > 0) {
+          riskColor = "red";
+        }
+      }
+      
+      resultSpan.textContent = riskMessage;
+      resultSpan.style.color = riskColor;
+      console.log("Updated display:", riskMessage);  // Debug log
+
     } else {
       resultSpan.textContent = "No Download Indicators Detected";
       resultSpan.style.color = "gray";
@@ -82,9 +105,6 @@ async function checkDownloadable(url, resultSpan, downloadButton) {
     resultSpan.style.color = "gray";
   }
 }
-
-
-
   /**
    * Updates the UI with scanned links and their latest predictions
    */
@@ -131,7 +151,7 @@ async function checkDownloadable(url, resultSpan, downloadButton) {
         resultSpan.textContent = statusText;
         resultSpan.style.color = color;
 
-        // If URL is malicious, add a "Check Download Link" button
+        // Add a "Check for Downloadable Link"/Magnifying glass button at each URL
         if (statusText === "Malicious" || statusText === "Safe") {
           const downloadButton = document.createElement("button");
           downloadButton.textContent = "Check Download Link";
