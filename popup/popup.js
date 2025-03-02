@@ -11,13 +11,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Example: userVotes[url] = 'tick' or 'cross'
   let userVotes = {};
 
+  // --------------------------------------------------------------------------
   // 1. Display current tab URL
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs && tabs.length > 0) {
       const tab = tabs[0];
       if (tab.url) {
         currentUrlElement.textContent = tab.url;
-        // Remove href to prevent clickable link
+        // Remove href to prevent clickable link if needed
         if (currentUrlElement.tagName.toLowerCase() === "a") {
           currentUrlElement.removeAttribute("href");
         }
@@ -29,6 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // --------------------------------------------------------------------------
   // 2. Scan for URLs in the active tab
   function scanPageUrls() {
     return Array.from(document.querySelectorAll("a, area, base, link"))
@@ -36,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .filter(href => href && href !== "javascript:void(0)");
   }
 
+  // --------------------------------------------------------------------------
   // 3. Fetch prediction from API
   async function fetchPrediction(url) {
     try {
@@ -47,10 +50,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
       return await response.json();
     } catch (error) {
+      console.error("Error fetching prediction for", url, error);
       return null;
     }
   }
 
+  // --------------------------------------------------------------------------
   // 4. Draw a doughnut chart on a canvas using plain JavaScript
   function drawDoughnutChart(canvasId, data, colors) {
     const canvas = document.getElementById(canvasId);
@@ -65,11 +70,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Clear previous drawing
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw each slice of the doughnut
     data.forEach((value, index) => {
       const sliceAngle = (value / total) * (2 * Math.PI);
       const endAngle = startAngle + sliceAngle;
-      
+
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
       ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle);
@@ -80,15 +84,15 @@ document.addEventListener("DOMContentLoaded", () => {
       startAngle = endAngle;
     });
 
-    // Draw the inner circle for the doughnut effect
-    const innerRadius = outerRadius * 0.5; // Adjust this ratio to change thickness
+    const innerRadius = outerRadius * 0.5;
     ctx.beginPath();
     ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
-    ctx.fillStyle = "#fff"; // Color of the inner circle (background)
+    ctx.fillStyle = "#fff";
     ctx.fill();
   }
 
-  // 5. Updated updateSummary function: updates summary text and draws the doughnut chart
+  // --------------------------------------------------------------------------
+  // 5. Update the summary section and draw the doughnut chart
   function updateSummary(urlData) {
     let safeCount = 0;
     let maliciousCount = 0;
@@ -99,235 +103,239 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const summaryHTML = `
+      <canvas id="doughnutChart" width="200" height="200"></canvas>
       <div id="summary-text">
         <p>Total URLs scanned: <strong>${urlData.length}</strong></p>
         <p>Safe URLs: <strong>${safeCount}</strong></p>
         <p>Malicious URLs: <strong>${maliciousCount}</strong></p>
       </div>
-      <canvas id="doughnutChart" width="200" height="200"></canvas>
     `;
-
     document.getElementById("summary-content").innerHTML = summaryHTML;
-
-    // Draw the doughnut chart using the computed counts
     drawDoughnutChart("doughnutChart", [safeCount, maliciousCount], ["#28a745", "#dc3545"]);
   }
 
-  // 6. Update UI with link cards and collect summary data
-  async function updateUI(urls) {
-    if (linkCountElement) linkCountElement.textContent = urls.length || 0;
-
-    if (!urls.length) {
-      urlListContainer.innerHTML = "<p>No URLs found on this page.</p>";
-      document.getElementById("summary-content").innerHTML = "<p>No URLs found on this page.</p>";
-      return;
-    }
-
-    // Clear previous content and prepare an array for summary data
-    urlListContainer.innerHTML = "";
-    let summaryData = [];
-
-    for (const url of urls) {
-      // Create card container
-      const card = document.createElement("div");
-      card.className = "card mb-2";
-      card.style.backgroundColor = "#343a40";
-      card.style.border = "none";
-
-      // Card body
-      const cardBody = document.createElement("div");
-      cardBody.className = "card-body";
-
-      // Top row: left (URL and spinner/badge) and right (action buttons)
-      const topRow = document.createElement("div");
-      topRow.className = "d-flex justify-content-between align-items-center";
-
-      // LEFT DIV: URL link and spinner/badge
-      const leftDiv = document.createElement("div");
-      leftDiv.className = "link-info d-inline-flex align-items-center";
-
-      // URL link
-      const urlLink = document.createElement("a");
-      urlLink.href = url;
-      urlLink.target = "_blank";
-      urlLink.textContent = url;
-      urlLink.className = "link-url"; // uses CSS styling
-      leftDiv.appendChild(urlLink);
-
-      // Spinner container (displaying "Checking..." while waiting for API)
-      const spinnerContainer = document.createElement("div");
-      spinnerContainer.className = "d-inline-flex align-items-center ms-2";
-
-      const spinnerText = document.createElement("span");
-      spinnerText.textContent = "Checking...";
-      spinnerText.style.fontSize = "0.75rem";
-      spinnerText.style.color = "#fff";
-
-      const spinner = document.createElement("div");
-      spinner.className = "spinner-border spinner-border-sm text-light ms-1";
-      spinner.setAttribute("role", "status");
-      const spinnerSpan = document.createElement("span");
-      spinnerSpan.className = "visually-hidden";
-      spinnerSpan.textContent = "Loading...";
-      spinner.appendChild(spinnerSpan);
-
-      spinnerContainer.appendChild(spinnerText);
-      spinnerContainer.appendChild(spinner);
-      leftDiv.appendChild(spinnerContainer);
-
-      // RIGHT DIV: for action buttons (will be filled later)
-      const rightDiv = document.createElement("div");
-      rightDiv.className = "action-buttons d-flex align-items-center";
-
-      // Assemble the top row
-      topRow.appendChild(leftDiv);
-      topRow.appendChild(rightDiv);
-
-      // Append top row to card body, and card body to card
-      cardBody.appendChild(topRow);
-      card.appendChild(cardBody);
-
-      // Add the card to the container
-      urlListContainer.appendChild(card);
-
-      // Fetch the prediction for the URL
-      const prediction = await fetchPrediction(url);
-      let status = "Error";
-      if (prediction) {
-        status = prediction.prediction;
-        if (
-          prediction.virustotal &&
-          (prediction.virustotal === "Safe" || prediction.virustotal === "Malicious")
-        ) {
-          status = prediction.virustotal;
-        }
+  // --------------------------------------------------------------------------
+  // 6. Check if a URL is downloadable and add a purple "Downloadable" pill.
+  // Returns true if downloadable, false otherwise.
+  async function checkAndAddDownloadablePill(pillsContainer, url) {
+    try {
+      const response = await fetch(API_URL_SECONDARY, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      if (!response.ok) {
+        throw new Error(`Download Check API Error: ${response.statusText}`);
       }
-
-      // Store this URL's result for summary calculations
-      summaryData.push({ url, status });
-
-      // Remove the spinner container now that the prediction is in
-      leftDiv.removeChild(spinnerContainer);
-
-      // Create a badge element to display the status
-      const pill = document.createElement("span");
-      pill.className = "badge badge-inline"; // aligns with .link-url
-      pill.textContent = "Error"; // default text if prediction fails
-      leftDiv.appendChild(pill);
-
-      // Process the prediction and update the badge and buttons
-      let statusText = status;
-      if (statusText === "Safe") {
-        pill.textContent = "Safe";
-        pill.classList.add("bg-safe"); // uses your styles.css
-
-        // Create a 2-button row for "Safe" URLs
-        const buttonRow = document.createElement("div");
-        buttonRow.className = "row row-cols-2 g-2 mt-2";
-
-        // Tick button
-        const tickCol = document.createElement("div");
-        tickCol.className = "col text-center";
-        const tickButton = document.createElement("button");
-        tickButton.type = "button";
-        tickButton.className = "btn btn-sm btn-light w-100";
-        tickButton.innerHTML = '<i class="bi bi-check-lg"></i>';
-        tickCol.appendChild(tickButton);
-        buttonRow.appendChild(tickCol);
-
-        // Cross button
-        const crossCol = document.createElement("div");
-        crossCol.className = "col text-center";
-        const crossButton = document.createElement("button");
-        crossButton.type = "button";
-        crossButton.className = "btn btn-sm btn-light w-100";
-        crossButton.innerHTML = '<i class="bi bi-x-lg"></i>';
-        crossCol.appendChild(crossButton);
-        buttonRow.appendChild(crossCol);
-
-        // Append the button row to the card body
-        cardBody.appendChild(buttonRow);
-
-        // Restore any existing vote for this URL
-        applyVoteStyles(url, tickButton, crossButton);
-
-        // Add event listeners for vote buttons
-        tickButton.addEventListener("click", () => {
-          handleVote(url, "tick", tickButton, crossButton);
-        });
-        crossButton.addEventListener("click", () => {
-          handleVote(url, "cross", tickButton, crossButton);
-        });
-
-      } else if (statusText === "Malicious") {
-        pill.textContent = "Malicious";
-        pill.classList.add("bg-malicious");
-
-        // Create a 3-button row for "Malicious" URLs
-        const buttonRow = document.createElement("div");
-        buttonRow.className = "row row-cols-3 g-2 mt-2";
-
-        // Magnifying Glass button
-        const magCol = document.createElement("div");
-        magCol.className = "col text-center";
-        const magButton = document.createElement("button");
-        magButton.type = "button";
-        magButton.className = "btn btn-sm btn-light w-100";
-        magButton.innerHTML = '<i class="bi bi-search"></i>';
-        magCol.appendChild(magButton);
-        buttonRow.appendChild(magCol);
-
-        // Tick button
-        const tickCol = document.createElement("div");
-        tickCol.className = "col text-center";
-        const tickButton = document.createElement("button");
-        tickButton.type = "button";
-        tickButton.className = "btn btn-sm btn-light w-100";
-        tickButton.innerHTML = '<i class="bi bi-check-lg"></i>';
-        tickCol.appendChild(tickButton);
-        buttonRow.appendChild(tickCol);
-
-        // Cross button
-        const crossCol = document.createElement("div");
-        crossCol.className = "col text-center";
-        const crossButton = document.createElement("button");
-        crossButton.type = "button";
-        crossButton.className = "btn btn-sm btn-light w-100";
-        crossButton.innerHTML = '<i class="bi bi-x-lg"></i>';
-        crossCol.appendChild(crossButton);
-        buttonRow.appendChild(crossCol);
-
-        // Append the button row to the card body
-        cardBody.appendChild(buttonRow);
-
-        // Restore any existing vote for this URL (applies to tick/cross)
-        applyVoteStyles(url, tickButton, crossButton);
-
-        // Add event listeners for Tick and Cross buttons
-        tickButton.addEventListener("click", () => {
-          handleVote(url, "tick", tickButton, crossButton);
-        });
-        crossButton.addEventListener("click", () => {
-          handleVote(url, "cross", tickButton, crossButton);
-        });
-
-        // Add event listener for the magnifying glass button
-        magButton.addEventListener("click", () => {
-          console.log("Magnifying glass clicked for:", url);
-        });
-
-      } else {
-        // For unknown or error statuses, show the error text
-        pill.textContent = statusText;
-        pill.classList.add("bg-malicious");
+      const result = await response.json();
+      if (result && result.isDownloadable) {
+        const downloadPill = document.createElement("span");
+        downloadPill.textContent = "Downloadable";
+        downloadPill.style.backgroundColor = "purple";
+        downloadPill.style.color = "white";
+        downloadPill.style.padding = "2px 6px";
+        downloadPill.style.borderRadius = "10px";
+        downloadPill.style.marginLeft = "10px";
+        pillsContainer.appendChild(downloadPill);
+        return true;
       }
+      return false;
+    } catch (error) {
+      console.error("Error in checkAndAddDownloadablePill for", url, error);
+      return false;
     }
-
-    // After processing all URLs, update the summary tab (including the chart)
-    updateSummary(summaryData);
   }
 
-  // 7. Apply stored vote style (tick or cross) for a given URL
+  // --------------------------------------------------------------------------
+  // 7. Further analyze the link in a sandbox when the sandbox button is clicked.
+  // Row 4 will display a spinner, then show the analysis result (real API call).
+  async function furtherAnalyzeSandbox(url, resultContainer) {
+    // Display the container (Row 4) and clear any previous content
+    resultContainer.style.display = "flex";
+    resultContainer.innerHTML = "";
+  
+    // Create a container for the loading icon + text
+    const loadingMessageContainer = document.createElement("div");
+    loadingMessageContainer.className = "d-flex align-items-center gap-2";
+  
+    // Create a Bootstrap spinner icon (rotating circle)
+    const loadingIcon = document.createElement("div");
+    loadingIcon.className = "spinner-border spinner-border-sm text-light";
+    loadingIcon.setAttribute("role", "status");
+    const spinnerSpan = document.createElement("span");
+    spinnerSpan.className = "visually-hidden";
+    spinnerSpan.textContent = "Loading...";
+    loadingIcon.appendChild(spinnerSpan);
+  
+    // Create the text
+    const loadingText = document.createElement("span");
+    loadingText.textContent = "Analyzing Downloadable in sandbox...";
+    loadingText.style.color = "#fff";
+  
+    // Add the icon + text to the container, then add to Row 4
+    loadingMessageContainer.appendChild(loadingIcon);
+    loadingMessageContainer.appendChild(loadingText);
+    resultContainer.appendChild(loadingMessageContainer);
+  
+    try {
+      console.log("Sending request to sandbox analysis:", url);
+  
+      // Send request to the Secondary API for deeper (sandbox) analysis
+      const response = await fetch(API_URL_SECONDARY, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Sandbox Analysis API Error: ${response.statusText}`);
+      }
+  
+      const result = await response.json();
+      console.log(`Sandbox Analysis Result for ${url}:`, result);
+  
+      // Clear the loading message
+      resultContainer.innerHTML = "";
+  
+      // Create a pill to display the final result (minimal message)
+      const analysisPill = document.createElement("span");
+      analysisPill.style.padding = "2px 6px";
+      analysisPill.style.borderRadius = "10px";
+      analysisPill.style.fontSize = "0.75rem";
+      analysisPill.style.fontWeight = "bold";
+  
+      // If the file is considered high risk or malicious
+      if (result.riskLevel && result.riskLevel.toLowerCase() === "high_risk") {
+        analysisPill.textContent = "Downloadable analyzed as malicious!";
+        analysisPill.style.backgroundColor = "#dc3545"; // red
+        analysisPill.style.color = "#fff";
+      } else {
+        analysisPill.textContent = "Downloadable analyzed as safe!";
+        analysisPill.style.backgroundColor = "#28a745"; // green
+        analysisPill.style.color = "#fff";
+      }
+  
+      resultContainer.appendChild(analysisPill);
+  
+    } catch (error) {
+      console.error(`Error analyzing sandbox for ${url}:`, error);
+      resultContainer.innerHTML = "";
+      const errorText = document.createElement("span");
+      errorText.textContent = "Error analyzing sandbox.";
+      errorText.style.color = "gray";
+      resultContainer.appendChild(errorText);
+    }
+  }
+  
+
+  // --------------------------------------------------------------------------
+  // 8. Create the URL card with 4 rows:
+  // Row 1: Link + Spinner; Row 2: Pills container; Row 3: Action buttons; Row 4: Sandbox analysis result (hidden initially)
+  function createURLCard(url) {
+    const card = document.createElement("div");
+    card.className = "card mb-2";
+    card.style.backgroundColor = "#343a40";
+    card.style.border = "none";
+
+    const cardBody = document.createElement("div");
+    cardBody.className = "card-body";
+
+    // ROW 1: Link and Spinner for prediction
+    const row1 = document.createElement("div");
+    row1.className = "d-flex justify-content-between align-items-center";
+    const linkEl = document.createElement("a");
+    linkEl.href = url;
+    linkEl.target = "_blank";
+    linkEl.textContent = url;
+    linkEl.className = "link-url";
+    row1.appendChild(linkEl);
+
+    // Spinner for Row 1 (visible until prediction is loaded)
+    const spinnerRow1 = document.createElement("div");
+    spinnerRow1.className = "spinner-border spinner-border-sm text-light";
+    spinnerRow1.setAttribute("role", "status");
+    const spinnerSpanRow1 = document.createElement("span");
+    spinnerSpanRow1.className = "visually-hidden";
+    spinnerSpanRow1.textContent = "Loading...";
+    spinnerRow1.appendChild(spinnerSpanRow1);
+    row1.appendChild(spinnerRow1);
+    cardBody.appendChild(row1);
+
+    // ROW 2: Pills container (for status and downloadable pills)
+    const row2 = document.createElement("div");
+    row2.className = "d-flex align-items-center gap-2 mt-1";
+    cardBody.appendChild(row2);
+
+    // ROW 3: Action buttons container
+    const row3 = document.createElement("div");
+    row3.className = "d-flex align-items-center gap-2 mt-2";
+    cardBody.appendChild(row3);
+
+    // ROW 4: Sandbox analysis result container (hidden initially)
+    const row4 = document.createElement("div");
+    row4.className = "d-flex align-items-center mt-2";
+    row4.style.display = "none";
+    cardBody.appendChild(row4);
+
+    card.appendChild(cardBody);
+    return {
+      card,
+      spinnerRow1,
+      pillsContainer: row2,
+      buttonsContainer: row3,
+      sandboxResultContainer: row4
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // 9. Attach action buttons (Tick, Cross, and conditionally Sandbox) to Row 3.
+  // If the link is downloadable, show the Sandbox button instead of a magnifying glass.
+  function attachActionButtons(container, sandboxResultContainer, url, downloadable) {
+    // Create Tick button
+    const tickButton = document.createElement("button");
+    tickButton.type = "button";
+    tickButton.className = "btn btn-sm btn-light";
+    tickButton.innerHTML = '<i class="bi bi-check-lg"></i>';
+    tickButton.setAttribute("title", "Misdentified? Help us improve by voting this url as safe or malicious.");
+
+    // Create Cross button
+    const crossButton = document.createElement("button");
+    crossButton.type = "button";
+    crossButton.className = "btn btn-sm btn-light";
+    crossButton.innerHTML = '<i class="bi bi-x-lg"></i>';
+    crossButton.setAttribute("title", "Misdentified? Help us improve by voting this url as safe or malicious.");
+
+    container.appendChild(tickButton);
+    container.appendChild(crossButton);
+
+    // If the link is downloadable, add a Sandbox button
+    if (downloadable) {
+      const sandboxButton = document.createElement("button");
+      sandboxButton.type = "button";
+      sandboxButton.className = "btn btn-sm btn-light";
+      // Use a sandbox-related icon (here using Bootstrap's box arrow icon as an example)
+      sandboxButton.innerHTML = '<i class="bi bi-file-earmark-break-fill"></i>';
+      sandboxButton.setAttribute("title", "Send the downloadable to our sandbox for analysis.");
+      container.appendChild(sandboxButton);
+
+      // Clicking this button calls furtherAnalyzeSandbox for a deeper analysis
+      sandboxButton.addEventListener("click", () => {
+        furtherAnalyzeSandbox(url, sandboxResultContainer);
+      });
+    }
+
+    // Attach vote event listeners for Tick and Cross
+    tickButton.addEventListener("click", () => {
+      handleVote(url, "tick", tickButton, crossButton);
+    });
+    crossButton.addEventListener("click", () => {
+      handleVote(url, "cross", tickButton, crossButton);
+    });
+    applyVoteStyles(url, tickButton, crossButton);
+  }
+
+  // --------------------------------------------------------------------------
+  // 10. Apply stored vote style (tick or cross) for a given URL
   function applyVoteStyles(url, tickButton, crossButton) {
     const vote = userVotes[url];
     if (vote === "tick") {
@@ -348,7 +356,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 8. Handle user vote logic: toggles vote selection and updates button styles
+  // --------------------------------------------------------------------------
+  // 11. Handle user vote logic: toggles vote selection and updates button styles
   function handleVote(url, choice, tickButton, crossButton) {
     if (userVotes[url] === choice) {
       userVotes[url] = null;
@@ -358,7 +367,8 @@ document.addEventListener("DOMContentLoaded", () => {
     applyVoteStyles(url, tickButton, crossButton);
   }
 
-  // 9. Disable links in the active page if desired
+  // --------------------------------------------------------------------------
+  // 12. Disable links in the active page if desired
   function disableLinks() {
     document.querySelectorAll("a").forEach(link => {
       if (link.classList.contains("processed")) return;
@@ -381,7 +391,74 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 10. Main function to scan and update UI
+  // --------------------------------------------------------------------------
+  // 13. Update UI with link cards and collect summary data
+  async function updateUI(urls) {
+    if (linkCountElement) linkCountElement.textContent = urls.length || 0;
+
+    if (!urls.length) {
+      urlListContainer.innerHTML = "<p>No URLs found on this page.</p>";
+      document.getElementById("summary-content").innerHTML = "<p>No URLs found on this page.</p>";
+      return;
+    }
+
+    // Clear previous content and prepare an array for summary data
+    urlListContainer.innerHTML = "";
+    let summaryData = [];
+
+    for (const url of urls) {
+      // Create the URL card with our 4-row layout
+      const { card, spinnerRow1, pillsContainer, buttonsContainer, sandboxResultContainer } = createURLCard(url);
+      urlListContainer.appendChild(card);
+
+      // Fetch the prediction for the URL
+      const prediction = await fetchPrediction(url);
+      let status = "Error";
+      if (prediction) {
+        status = prediction.prediction;
+        if (
+          prediction.virustotal &&
+          (prediction.virustotal === "Safe" || prediction.virustotal === "Malicious")
+        ) {
+          status = prediction.virustotal;
+        }
+      }
+      summaryData.push({ url, status });
+
+      // Remove the spinner from Row 1 once prediction is loaded
+      spinnerRow1.style.display = "none";
+
+      // In Row 2 (pills container), create and append the status pill
+      const statusPill = document.createElement("span");
+      statusPill.className = "badge badge-inline";
+      if (status === "Safe") {
+        statusPill.textContent = "Safe";
+        statusPill.classList.add("bg-safe");
+      } else if (status === "Malicious") {
+        statusPill.textContent = "Malicious";
+        statusPill.classList.add("bg-malicious");
+      } else {
+        statusPill.textContent = status;
+        statusPill.classList.add("bg-malicious");
+      }
+      pillsContainer.appendChild(statusPill);
+
+      // Check if the link is downloadable and add a purple "Downloadable" pill to Row 2.
+      // Also, capture the downloadable status.
+      let downloadable = await checkAndAddDownloadablePill(pillsContainer, url);
+
+      // Attach action buttons to Row 3.
+      // If downloadable is true, show Tick, Cross, and Sandbox button.
+      // If not, only show Tick and Cross.
+      attachActionButtons(buttonsContainer, sandboxResultContainer, url, downloadable);
+    }
+
+    // After processing all URLs, update the summary tab (including the chart)
+    updateSummary(summaryData);
+  }
+
+  // --------------------------------------------------------------------------
+  // 14. Main function to scan and update UI
   async function scanAndPredictLinks() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs || !tabs.length) return;
@@ -394,6 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (chrome.runtime.lastError) return;
           const urls = results[0].result;
           updateUI(urls);
+
           // Optionally disable links on the active page
           chrome.scripting.executeScript({
             target: { tabId: tab.id },
@@ -404,13 +482,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 11. Observe DOM changes in the popup (optional)
+  // --------------------------------------------------------------------------
+  // 15. Observe DOM changes in the popup (optional)
   const observer = new MutationObserver(() => disableLinks());
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // 12. Periodically re-scan (e.g., every 60 seconds)
+  // --------------------------------------------------------------------------
+  // 16. Periodically re-scan (e.g., every 60 seconds)
   setInterval(scanAndPredictLinks, 60000);
 
+  // --------------------------------------------------------------------------
   // Initial scan on load
   scanAndPredictLinks();
 });
