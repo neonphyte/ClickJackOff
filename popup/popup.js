@@ -12,15 +12,18 @@ document.addEventListener("DOMContentLoaded", () => {
   let userVotes = {};
 
   // --------------------------------------------------------------------------
-  // 1. Display current tab URL
+  // 1. Display current tab URL (non-clickable)
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs && tabs.length > 0) {
       const tab = tabs[0];
       if (tab.url) {
         currentUrlElement.textContent = tab.url;
-        // Remove href to prevent clickable link if needed
+        // If currentUrlElement is an <a>, remove the href and prevent default clicks
         if (currentUrlElement.tagName.toLowerCase() === "a") {
           currentUrlElement.removeAttribute("href");
+          currentUrlElement.addEventListener("click", (e) => {
+            e.preventDefault();
+          });
         }
       } else {
         currentUrlElement.textContent = "URL not accessible.";
@@ -148,16 +151,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --------------------------------------------------------------------------
   // 7. Further analyze the link in a sandbox when the sandbox button is clicked.
-  // Row 4 will display a spinner, then show the analysis result (real API call).
+  // Row 4 will display a spinner and then show the analysis result.
   async function furtherAnalyzeSandbox(url, resultContainer) {
     // Display the container (Row 4) and clear any previous content
     resultContainer.style.display = "flex";
     resultContainer.innerHTML = "";
-  
+
     // Create a container for the loading icon + text
     const loadingMessageContainer = document.createElement("div");
     loadingMessageContainer.className = "d-flex align-items-center gap-2";
-  
+
     // Create a Bootstrap spinner icon (rotating circle)
     const loadingIcon = document.createElement("div");
     loadingIcon.className = "spinner-border spinner-border-sm text-light";
@@ -166,45 +169,44 @@ document.addEventListener("DOMContentLoaded", () => {
     spinnerSpan.className = "visually-hidden";
     spinnerSpan.textContent = "Loading...";
     loadingIcon.appendChild(spinnerSpan);
-  
+
     // Create the text
     const loadingText = document.createElement("span");
-    loadingText.textContent = "Analyzing Downloadable in sandbox...";
+    loadingText.textContent = "Analyzing file in sandbox!";
     loadingText.style.color = "#fff";
-  
+
     // Add the icon + text to the container, then add to Row 4
     loadingMessageContainer.appendChild(loadingIcon);
     loadingMessageContainer.appendChild(loadingText);
     resultContainer.appendChild(loadingMessageContainer);
-  
+
     try {
       console.log("Sending request to sandbox analysis:", url);
-  
+
       // Send request to the Secondary API for deeper (sandbox) analysis
       const response = await fetch(API_URL_SECONDARY, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-  
+
       if (!response.ok) {
         throw new Error(`Sandbox Analysis API Error: ${response.statusText}`);
       }
-  
+
       const result = await response.json();
       console.log(`Sandbox Analysis Result for ${url}:`, result);
-  
+
       // Clear the loading message
       resultContainer.innerHTML = "";
-  
+
       // Create a pill to display the final result (minimal message)
       const analysisPill = document.createElement("span");
       analysisPill.style.padding = "2px 6px";
       analysisPill.style.borderRadius = "10px";
       analysisPill.style.fontSize = "0.75rem";
       analysisPill.style.fontWeight = "bold";
-  
-      // If the file is considered high risk or malicious
+
       if (result.riskLevel && result.riskLevel.toLowerCase() === "high_risk") {
         analysisPill.textContent = "Downloadable analyzed as malicious!";
         analysisPill.style.backgroundColor = "#dc3545"; // red
@@ -214,9 +216,9 @@ document.addEventListener("DOMContentLoaded", () => {
         analysisPill.style.backgroundColor = "#28a745"; // green
         analysisPill.style.color = "#fff";
       }
-  
+
       resultContainer.appendChild(analysisPill);
-  
+
     } catch (error) {
       console.error(`Error analyzing sandbox for ${url}:`, error);
       resultContainer.innerHTML = "";
@@ -226,7 +228,6 @@ document.addEventListener("DOMContentLoaded", () => {
       resultContainer.appendChild(errorText);
     }
   }
-  
 
   // --------------------------------------------------------------------------
   // 8. Create the URL card with 4 rows:
@@ -236,89 +237,103 @@ document.addEventListener("DOMContentLoaded", () => {
     card.className = "card mb-2";
     card.style.backgroundColor = "#343a40";
     card.style.border = "none";
-
+  
     const cardBody = document.createElement("div");
     cardBody.className = "card-body";
-
+  
     // ROW 1: Link and Spinner for prediction
     const row1 = document.createElement("div");
     row1.className = "d-flex justify-content-between align-items-center";
+    
+    // Create a container for the link so we can control its width
+    const linkContainer = document.createElement("div");
+    linkContainer.style.flex = "1 1 auto"; // Allow it to grow/shrink
+    linkContainer.style.maxWidth = "80%";   // Occupy at most 80% of the row
+    
     const linkEl = document.createElement("a");
     linkEl.href = url;
+    // Prevent link from navigating
+    linkEl.addEventListener("click", (e) => { e.preventDefault(); });
     linkEl.target = "_blank";
     linkEl.textContent = url;
     linkEl.className = "link-url";
-    row1.appendChild(linkEl);
-
-    // Spinner for Row 1 (visible until prediction is loaded)
-    const spinnerRow1 = document.createElement("div");
-    spinnerRow1.className = "spinner-border spinner-border-sm text-light";
-    spinnerRow1.setAttribute("role", "status");
+    // Optionally override CSS truncation if needed:
+    linkEl.style.whiteSpace = "nowrap";
+    linkEl.style.overflow = "hidden";
+    linkEl.style.textOverflow = "ellipsis";
+    linkContainer.appendChild(linkEl);
+    row1.appendChild(linkContainer);
+    
+    // Create a container for the spinner that won't shrink
+    const spinnerContainer = document.createElement("div");
+    spinnerContainer.style.flexShrink = "0"; // prevent shrinking
+    spinnerContainer.className = "spinner-border spinner-border-sm text-light";
+    spinnerContainer.setAttribute("role", "status");
     const spinnerSpanRow1 = document.createElement("span");
     spinnerSpanRow1.className = "visually-hidden";
     spinnerSpanRow1.textContent = "Loading...";
-    spinnerRow1.appendChild(spinnerSpanRow1);
-    row1.appendChild(spinnerRow1);
+    spinnerContainer.appendChild(spinnerSpanRow1);
+    row1.appendChild(spinnerContainer);
+    
     cardBody.appendChild(row1);
-
+  
     // ROW 2: Pills container (for status and downloadable pills)
     const row2 = document.createElement("div");
     row2.className = "d-flex align-items-center gap-2 mt-1";
     cardBody.appendChild(row2);
-
+  
     // ROW 3: Action buttons container
     const row3 = document.createElement("div");
     row3.className = "d-flex align-items-center gap-2 mt-2";
     cardBody.appendChild(row3);
-
+  
     // ROW 4: Sandbox analysis result container (hidden initially)
     const row4 = document.createElement("div");
     row4.className = "d-flex align-items-center mt-2";
     row4.style.display = "none";
     cardBody.appendChild(row4);
-
+  
     card.appendChild(cardBody);
     return {
       card,
-      spinnerRow1,
+      spinnerRow1: spinnerContainer,
       pillsContainer: row2,
       buttonsContainer: row3,
       sandboxResultContainer: row4
     };
   }
-
+  
   // --------------------------------------------------------------------------
   // 9. Attach action buttons (Tick, Cross, and conditionally Sandbox) to Row 3.
-  // If the link is downloadable, show the Sandbox button instead of a magnifying glass.
+  // If the link is downloadable, show the Sandbox button; otherwise, only Tick and Cross.
   function attachActionButtons(container, sandboxResultContainer, url, downloadable) {
     // Create Tick button
     const tickButton = document.createElement("button");
     tickButton.type = "button";
     tickButton.className = "btn btn-sm btn-light";
     tickButton.innerHTML = '<i class="bi bi-check-lg"></i>';
-    tickButton.setAttribute("title", "Misdentified? Help us improve by voting this url as safe or malicious.");
+    tickButton.setAttribute("title", "Vote as safe");
 
     // Create Cross button
     const crossButton = document.createElement("button");
     crossButton.type = "button";
     crossButton.className = "btn btn-sm btn-light";
     crossButton.innerHTML = '<i class="bi bi-x-lg"></i>';
-    crossButton.setAttribute("title", "Misdentified? Help us improve by voting this url as safe or malicious.");
+    crossButton.setAttribute("title", "Vote as malicious");
 
     container.appendChild(tickButton);
     container.appendChild(crossButton);
 
-    // If the link is downloadable, add a Sandbox buttonn
+    // If the link is downloadable, add a Sandbox button
     if (downloadable) {
       const sandboxButton = document.createElement("button");
       sandboxButton.type = "button";
       sandboxButton.className = "btn btn-sm btn-light";
-      // Use a sandbox-related icon (here using Bootstrap's box arrow icon as an example)
-      sandboxButton.innerHTML = '<i class="bi bi-file-earmark-break-fill"></i>';
-      sandboxButton.setAttribute("title", "Send the downloadable to our sandbox for analysis.");
+      // Use a sandbox-related icon (Bootstrap icon example)
+      sandboxButton.innerHTML = '<i class="bi bi-box-arrow-in-right"></i>';
+      sandboxButton.setAttribute("title", "Submit file for sandbox analysis");
       container.appendChild(sandboxButton);
 
-      // Clicking this button calls furtherAnalyzeSandbox for a deeper analysis
       sandboxButton.addEventListener("click", () => {
         furtherAnalyzeSandbox(url, sandboxResultContainer);
       });

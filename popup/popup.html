@@ -33,15 +33,24 @@
     <!-- Current URL Display Card -->
     <div class="p-2 rounded mb-3" style="background-color: #343a40;">
       <strong style="font-size: 0.9rem;">Current URL:</strong><br>
-      <a 
+      <a
         id="current-url"
         href="#"
         class="text-decoration-none"
-        style="font-size: 0.8rem; color: #24B3A8;"
+        style="
+          font-size: 0.8rem; 
+          color: #24B3A8;
+          display: inline-block; 
+          max-width: 100%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          "
         target="_blank"
       >
         Loading...
       </a>
+
     </div>
 
     <!-- Tabs (Summary | Scanned Links) -->
