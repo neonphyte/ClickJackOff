@@ -205,19 +205,19 @@ document.addEventListener("DOMContentLoaded", () => {
       analysisPill.style.fontWeight = "bold";
   
       // If the file is considered high risk or malicious
-      if (result.vtResult.malicious > 0 && (result.fsResult && result.fsResult.status === "completed" && result.fsResult.verdict === "malicious")) {
+      if (result.vtResult.malicious > 1 && (result.fsResult && result.fsResult.status === "completed" && result.fsResult.verdict === "malicious")) {
         // analysisPill.textContent = "Downloadable analyzed as malicious!";
-        analysisPill.textContent = "malicious";
+        analysisPill.textContent = "Malicious File!!!";
         analysisPill.style.backgroundColor = "#dc3545"; // red
         analysisPill.style.color = "#fff";
-      } else if (result.vtResult.malicious > 0 || (result.fsResult && result.fsResult.status === "completed" && result.fsResult.verdict === "malicious")){
-        // analysisPill.textContent = "Downloadable analyzed as might be malicious";
-        analysisPill.textContent = result.fsResult.threat_score;
+      } else if (result.vtResult.malicious > 1 || (result.fsResult && result.fsResult.status === "completed" && result.fsResult.verdict === "malicious")){
+        // analysisPill.textContent = "Downloadable analyzed as possibly malicious";
+        analysisPill.textContent = "Be Careful Of This File!";
         analysisPill.style.backgroundColor = "#ffa500"; // orange
         analysisPill.style.color = "#fff";
       } else {
         // analysisPill.textContent = "Downloadable analyzed as safe!";
-        analysisPill.textContent = "clean";
+        analysisPill.textContent = "Safe File";
         analysisPill.style.backgroundColor = "#28a745"; // green
         analysisPill.style.color = "#fff";
       }
