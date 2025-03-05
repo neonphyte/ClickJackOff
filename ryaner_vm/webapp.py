@@ -14,6 +14,7 @@ import subprocess
 import time
 import re
 from dotenv import load_dotenv
+from pyhelpers.ops import is_downloadable
 
 # Load VirusTotal API Key & Falcon Sandbox API Key
 load_dotenv("key.env")
@@ -95,51 +96,57 @@ def analyze_download_indicators(url):
         parsed_url = urlparse(url)
         path = unquote(parsed_url.path.lower())
 
-        # Categorize risks based on checking on file extension
-        risk_categories = {
-            'high_risk': {
-                'executable': ['.exe', '.msi', '.dll', '.bat', '.cmd', '.sh'],
-                'script': ['.ps1', '.vbs', '.js', '.jsp', '.jse', '.php'],
-                'system': ['.sys', '.drv', '.bin']
-            },
-            'medium_risk': {
-                'archive': ['.zip', '.rar', '.7z', '.tar.gz', '.iso'],
-                'office': ['.doc', '.docm', '.xls', '.xlsm', '.ppt', '.pptm']
-            },
-            'low_risk': {
-                'document': ['.pdf', '.docx', '.xlsx', '.pptx', '.txt'],
-                'media': ['.mp3', '.mp4', '.jpg', '.png']
-            }
-        }
+        # # Categorize risks based on checking on file extension
+        # risk_categories = {
+        #     'high_risk': {
+        #         'executable': ['.exe', '.msi', '.dll', '.bat', '.cmd', '.sh'],
+        #         'script': ['.ps1', '.vbs', '.js', '.jsp', '.jse', '.php'],
+        #         'system': ['.sys', '.drv', '.bin']
+        #     },
+        #     'medium_risk': {
+        #         'archive': ['.zip', '.rar', '.7z', '.tar.gz', '.iso'],
+        #         'office': ['.doc', '.docm', '.xls', '.xlsm', '.ppt', '.pptm']
+        #     },
+        #     'low_risk': {
+        #         'document': ['.pdf', '.docx', '.xlsx', '.pptx', '.txt'],
+        #         'media': ['.mp3', '.mp4', '.jpg', '.png']
+        #     }
+        # }
 
         # Check for file extensions
-        for risk_level, categories in risk_categories.items():
-            for category, extensions in categories.items():
-                if any(path.endswith(ext) for ext in extensions):
-                    return {
-                        "isDownloadable": True,
-                        "riskLevel": risk_level,
-                        "category": category,
-                        "fileType": path.split('.')[-1],
-                        "method": "extension"
-                    }
+#        for risk_level, categories in risk_categories.items():
+#            for category, extensions in categories.items():
+#                if any(path.endswith(ext) for ext in extensions):
+#                    return {
+#                        "isDownloadable": True,
+#                        "riskLevel": risk_level,
+#                        "category": category,
+#                        "fileType": path.split('.')[-1],
+#                        "method": "extension"
+#                    }
+
+        # check if URL is downloadable based on HTTP Headers (i.e. Content type)
+        if(is_downloadable(url)):
+            return{
+                "isDownloadable": True
+            }
 
         # Check headers for download indicators
-        try:
-            head_response = requests.head(url, allow_redirects=True, timeout=5)
-            content_type = head_response.headers.get('Content-Type', '')
-            content_disp = head_response.headers.get('Content-Disposition', '')
+        # try:
+        #     head_response = requests.head(url, allow_redirects=True, timeout=5)
+        #     content_type = head_response.headers.get('Content-Type', '')
+        #     content_disp = head_response.headers.get('Content-Disposition', '')
 
-            if 'attachment' in content_disp or 'filename' in content_disp:
-                return {
-                    "isDownloadable": True,
-                    "riskLevel": "unknown",
-                    "method": "header",
-                    "fileType": content_type
-                }
+        #     if 'attachment' in content_disp or 'filename' in content_disp:
+        #         return {
+        #             "isDownloadable": True,
+        #             "riskLevel": "unknown",
+        #             "method": "header",
+        #             "fileType": content_type
+        #         }
 
-        except requests.exceptions.RequestException:
-            pass
+        # except requests.exceptions.RequestException:
+        #     pass
 
         return {
             "isDownloadable": False,
